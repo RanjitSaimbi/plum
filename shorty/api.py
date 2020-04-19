@@ -1,49 +1,47 @@
 from flask import Blueprint, jsonify, request
-from shorty.tiny_url import TinyUrl
-from shorty.bitly import Bitly
 from urllib.error import HTTPError
+import shorty.services as services
+from shorty.services import Bitly
+import importlib, inspect
 
 api = Blueprint('api', __name__)
 
-
 @api.route('/shortlinks', methods=['POST'])
 def create_shortlink():
-    shortlink_services = {}
-    service = lambda f: shortlink_services.setdefault(f.__name__, f)
+    default = Bitly
 
-    @service
-    def tinyurl():
+    def fallback(request_data):
+        service = request_data['service'].capitalize()
+        for name, cls in inspect.getmembers(importlib.import_module('shorty.services'), inspect.isclass):
+            if cls.__module__ == 'shorty.services' and name != service:
+                try:
+                    service = getattr(services, name)
+                    return service(request_data).call_service()
+                except HTTPError as e:
+                    return jsonify({'response': 'services failed'}), 400
+
+    def response():
         request_data = request.get_json()
-        return TinyUrl(request_data).call_service()
+        service = 'service' in request_data
+        url = 'url' in request_data
+        invalid_service = request_data['service'].capitalize() not in dir(services) if service else False
 
-    @service
-    def bitly():
-        request_data = request.get_json()
-        return Bitly(request_data).call_service()
+        if not url:
+            return jsonify({'response': 'url not specified'}), 400
 
-    def default():
-        return bitly()
-
-    def call_fallback(service):
-        del shortlink_services[service]
-
-        for service in shortlink_services.keys():
+        if invalid_service:
+            return jsonify({'response': 'invalid service specified'}), 400
+        
+        if service:
+            service = getattr(services, request_data['service'].capitalize())
+            instance = service(request_data)
             try:
-                return shortlink_services[service]()
+                return instance.call_service()
             except HTTPError as e:
-                return jsonify({'response': 'services failed'}), 400
+                return fallback(request_data)
+        else:
+            return default(request_data).call_service()
+    
+    return response()
 
-    def my_main():
-        request_data = request.get_json()
-        missing_service = 'service' not in request_data
-        # Prelim decision to fallback to default if invalid service provided
-        invalid_service = request_data['service'] not in shortlink_services.keys() if not missing_service else None
 
-        if missing_service or invalid_service:
-            return default()
-        try:
-            return shortlink_services[request_data['service']]()
-        except HTTPError as e:
-            return call_fallback(request_data['service'])
-
-    return my_main()
