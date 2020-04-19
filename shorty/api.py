@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 from shorty.tiny_url import TinyUrl
 from shorty.bitly import Bitly
+from urllib.error import HTTPError
 
 api = Blueprint('api', __name__)
 
@@ -23,6 +24,15 @@ def create_shortlink():
     def default():
         return bitly()
 
+    def call_fallback(service):
+        del shortlink_services[service]
+
+        for service in shortlink_services.keys():
+            try:
+                return shortlink_services[service]()
+            except HTTPError as e:
+                return jsonify({'response': 'services failed'}), 400
+
     def my_main():
         request_data = request.get_json()
         missing_service = 'service' not in request_data
@@ -31,7 +41,9 @@ def create_shortlink():
 
         if missing_service or invalid_service:
             return default()
-
-        return shortlink_services[request_data['service']]()
+        try:
+            return shortlink_services[request_data['service']]()
+        except HTTPError as e:
+            return call_fallback(request_data['service'])
 
     return my_main()
