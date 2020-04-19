@@ -11,10 +11,11 @@ class TestCreateShortlink:
             return client.post('/shortlinks', json=dict(service=data['service'], url=data['url']))
 
     def mock_tinyurl(self):
-        return jsonify({'service': 'tinyurl'})
+        return jsonify({'link': 'link tinyurl', 'url': 'url'})
 
     def mock_bitly(self):
-        return jsonify({'service': 'bitly'})
+        return jsonify({'link': 'link bitly', 'url': 'url'})
+
 
     def mock_error(self):
         raise HTTPError('http://url.com', 500, 'Internal Error', {}, None)
