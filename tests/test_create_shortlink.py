@@ -20,3 +20,8 @@ class TestCreateShortlink:
         response = self.shortlinks_request(app, {'service': 'tinyurl'})
         assert b'tinyurl' in response.data
         assert response.status_code == 200
+
+    def test_default(self, app):
+        response = self.shortlinks_request(app, {'service': 'invalid_service'})
+        assert b'bitly' in response.data
+        assert response.status_code == 200
