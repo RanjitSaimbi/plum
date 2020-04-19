@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-
+from shorty.tiny_url import TinyUrl
 
 api = Blueprint('api', __name__)
 
@@ -11,7 +11,8 @@ def create_shortlink():
 
     @service
     def tinyurl():
-        return jsonify({'response': 'tinyurl'})
+        request_data = request.get_json()
+        return TinyUrl(request_data).call_service()
 
     @service
     def bitly():
