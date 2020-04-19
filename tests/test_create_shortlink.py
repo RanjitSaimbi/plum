@@ -1,5 +1,6 @@
 from flask import jsonify
 from shorty.tiny_url import TinyUrl
+from shorty.bitly import Bitly
 
 class TestCreateShortlink:
     def shortlinks_request(self, app, data):
@@ -12,7 +13,9 @@ class TestCreateShortlink:
     def mock_bitly(self):
         return jsonify({'service': 'bitly'})
 
-    def test_bitly(self, app):
+    def test_bitly(self, app, monkeypatch):
+        monkeypatch.setattr(Bitly, "call_service", self.mock_bitly)
+
         response = self.shortlinks_request(app, {'service': 'bitly'})
         assert b'bitly' in response.data
         assert response.status_code == 200
