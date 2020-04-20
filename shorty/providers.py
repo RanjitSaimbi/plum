@@ -28,9 +28,8 @@ class Tinyurl(Response):
         link = str(BeautifulSoup(response, 'html.parser'))
         return self.format_response(self.long_url, link)
     
-
 class Bitly(Response):
-    auth_token = os.environ.get('TOKEN')
+    token = os.environ.get('TOKEN')
     BITLY_URL = "https://api-ssl.bitly.com/v4/shorten"
 
     def __init__(self, request_data):
@@ -40,15 +39,15 @@ class Bitly(Response):
             "domain": "bit.ly",
             "long_url": self.long_url
         }
-
-    def add_headers(self, request, jsondataasbytes):
-        request.add_header('Content-Type', 'application/json; charset=utf-8')
-        request.add_header('Authorization', self.auth_token)
-        request.add_header('Content-Length', len(jsondataasbytes))
-
+        
     def convert_data(self, data):
         jsondata = json.dumps(data)
         return jsondata.encode('utf-8')
+
+    def add_headers(self, request, jsondataasbytes):
+        request.add_header('Content-Type', 'application/json; charset=utf-8')
+        request.add_header('Authorization', self.token)
+        request.add_header('Content-Length', len(jsondataasbytes))
 
     def call_service(self):
         request = urllib.request.Request(self.BITLY_URL)

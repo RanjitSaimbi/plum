@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from urllib.error import HTTPError
-import shorty.services as services
-from shorty.services import Bitly
+import shorty.providers as providers
+from shorty.providers import Bitly
 import importlib, inspect
 
 class ShortlinkController(object):
@@ -12,30 +12,30 @@ class ShortlinkController(object):
         default = Bitly
 
         def fallback(request_data):
-            service = request_data['service'].capitalize()
-            for name, cls in inspect.getmembers(importlib.import_module('shorty.services'), inspect.isclass):
-                if cls.__module__ == 'shorty.services' and name != service:
+            provider= request_data['provider'].capitalize()
+            for name, cls in inspect.getmembers(importlib.import_module('shorty.providers'), inspect.isclass):
+                if cls.__module__ == 'shorty.providers' and (name != provider and name != 'Response'):
                     try:
-                        service = getattr(services, name)
-                        return service(request_data).call_service()
+                        provider = getattr(providers, name)
+                        return provider(request_data).call_service()
                     except HTTPError as e:
-                        return jsonify({'response': 'services failed'}), 400
+                        return jsonify({'response': 'all providers failed'}), 400
 
         def response():
-            service = 'service' in self.request_data
+            provider = 'provider' in self.request_data
             url = 'url' in self.request_data
-            invalid_service = self.request_data['service'].capitalize() not in dir(services) if service else False
+            invalid_provider = self.request_data['provider'].capitalize() not in dir(providers) if provider else False
 
             if not url:
                 return jsonify({'response': 'url not specified'}), 400
 
-            if invalid_service:
-                return jsonify({'response': 'invalid service specified'}), 400
+            if invalid_provider:
+                return jsonify({'response': 'invalid provider specified'}), 400
             
-            if service:
-                service = getattr(services, self.request_data['service'].capitalize())
-                instance = service(self.request_data)
+            if provider:
                 try:
+                    provider = getattr(providers, self.request_data['provider'].capitalize())
+                    instance = provider(self.request_data)
                     return instance.call_service()
                 except HTTPError as e:
                     return fallback(self.request_data)
